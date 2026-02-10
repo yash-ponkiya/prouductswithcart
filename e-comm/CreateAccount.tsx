@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -21,27 +22,27 @@ type Props = {
   goToCart: () => void;
 };
 
+const PAGE_SIZE = 10;
+
+/* ---------- RATING ---------- */
 const Rating = ({ value = 0 }: { value?: number }) => {
   const full = Math.floor(value);
   const empty = 5 - full;
 
   return (
     <View style={styles.ratingContainer}>
-      {Array(full)
-        .fill(0)
-        .map((_, i) => (
-          <Text key={`f-${i}`} style={styles.star}>★</Text>
-        ))}
-      {Array(empty)
-        .fill(0)
-        .map((_, i) => (
-          <Text key={`e-${i}`} style={styles.emptyStar}>★</Text>
-        ))}
+      {Array(full).fill(0).map((_, i) => (
+        <Text key={`f-${i}`} style={styles.star}>★</Text>
+      ))}
+      {Array(empty).fill(0).map((_, i) => (
+        <Text key={`e-${i}`} style={styles.emptyStar}>★</Text>
+      ))}
       <Text style={styles.ratingValue}>{value.toFixed(1)}</Text>
     </View>
   );
 };
 
+/* ---------- PRODUCT CARD ---------- */
 const ProductCard = ({ item, onPress }: any) => (
   <TouchableOpacity style={styles.card} onPress={() => onPress(item)}>
     <Image source={{ uri: item.image }} style={styles.image} />
@@ -62,6 +63,18 @@ const ProductCard = ({ item, onPress }: any) => (
   </TouchableOpacity>
 );
 
+/* =================== ✅ ADDED: SKELETON PRODUCT CARD =================== */
+const SkeletonCard = () => (
+  <View style={[styles.card, { backgroundColor: "#f2f2f2" }]}>
+    <View style={{ height: 150, backgroundColor: "#e0e0e0" }} />
+    <View style={{ padding: 10 }}>
+      <View style={{ height: 14, backgroundColor: "#ddd", marginBottom: 8 }} />
+      <View style={{ height: 14, width: "60%", backgroundColor: "#ddd" }} />
+    </View>
+  </View>
+);
+/* ===================================================================== */
+
 const CreateAccount: React.FC<Props> = ({ goToCart }) => {
   const {
     productList,
@@ -80,6 +93,38 @@ const CreateAccount: React.FC<Props> = ({ goToCart }) => {
 
   const { cart, addToCart } = useCart();
   const [qty, setQty] = useState(1);
+
+  /* =================== ✅ ADDED: INITIAL LOADING =================== */
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 1000); // Instagram-like initial load
+
+    return () => clearTimeout(timer);
+  }, []);
+  /* ================================================================= */
+
+  /* ---------- LAZY LOADING STATE (UNCHANGED) ---------- */
+  const [page, setPage] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const visibleProducts = useMemo(() => {
+    return productList.slice(0, page * PAGE_SIZE);
+  }, [productList, page]);
+
+  const loadMoreProducts = () => {
+    if (loadingMore) return;
+    if (page * PAGE_SIZE >= productList.length) return;
+
+    setLoadingMore(true);
+
+    setTimeout(() => {
+      setPage(prev => prev + 1);
+      setLoadingMore(false);
+    }, 800);
+  };
 
   const increaseQty = () => {
     if (!sizeValue) {
@@ -135,28 +180,41 @@ const CreateAccount: React.FC<Props> = ({ goToCart }) => {
 
       {/* PRODUCT GRID */}
       <FlatList
-        data={productList}
+        data={initialLoading ? Array.from({ length: PAGE_SIZE }) : visibleProducts}
         numColumns={2}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={(_, i) => String(i)}
         contentContainerStyle={styles.list}
         columnWrapperStyle={styles.columnWrapper}
-        renderItem={({ item, index }) => (
-          <View style={{ marginRight: index % 2 === 0 ? H_GAP : 0 }}>
-            <ProductCard
-              item={item}
-              onPress={(i: any) => {
-                setQty(1);
-                openModal(i);
-              }}
-            />
-          </View>
-        )}
+        renderItem={({ item, index }) =>
+          initialLoading ? (
+            <SkeletonCard />
+          ) : (
+            <View style={{ marginRight: index % 2 === 0 ? H_GAP : 0 }}>
+              <ProductCard
+                item={item}
+                onPress={(i: any) => {
+                  setQty(1);
+                  openModal(i);
+                }}
+              />
+            </View>
+          )
+        }
+        onEndReached={loadMoreProducts}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: 20 }}>
+              <ActivityIndicator size="large" color="green" />
+            </View>
+          ) : null
+        }
       />
 
+      {/* =================== MODAL — 100% UNCHANGED =================== */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <Pressable style={styles.modalOverlay} onPress={closeModal}>
           <Pressable style={styles.modalBox}>
-
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalContent}
@@ -208,7 +266,6 @@ const CreateAccount: React.FC<Props> = ({ goToCart }) => {
                     </Text>
                   </View>
 
-                  {/* QUANTITY */}
                   <View style={styles.row}>
                     <Text style={styles.label}>Quantity:</Text>
                     <View style={styles.qtyContainer}>
@@ -240,10 +297,10 @@ const CreateAccount: React.FC<Props> = ({ goToCart }) => {
             <TouchableOpacity onPress={closeModal} style={styles.modalCloseButton}>
               <Text style={styles.modalCloseText}>Close</Text>
             </TouchableOpacity>
-
           </Pressable>
         </Pressable>
       </Modal>
+      {/* ============================================================= */}
     </SafeAreaView>
   );
 };

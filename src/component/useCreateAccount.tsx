@@ -2,6 +2,11 @@ import { useState, useCallback, useMemo } from "react";
 import { productList } from "../utils/constantData";
 
 export const useCreateAccount = () => {
+  /* ---------------- ADDED (for compatibility) ---------------- */
+  const [loading] = useState(false);
+  const [loadingMore] = useState(false);
+
+  /* ---------------- EXISTING CODE (UNCHANGED) ---------------- */
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
@@ -38,17 +43,28 @@ export const useCreateAccount = () => {
   }, [selectedItem, sizeValue]);
 
   return {
+    /* products */
     productList,
+
+    /* added */
+    loading,
+    loadingMore,
+
+    /* modal */
     modalVisible,
     openModal,
     closeModal,
     selectedItem,
+
+    /* dropdown */
     sizeOpen,
     setSizeOpen,
     sizeValue,
     setSizeValue,
     sizeItems,
     setSizeItems,
+
+    /* stock */
     selectedSizeStock,
   };
 };
