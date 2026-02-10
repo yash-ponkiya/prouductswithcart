@@ -2,7 +2,7 @@ import { StyleSheet, Dimensions } from "react-native";
 
 const { width } = Dimensions.get("window");
 
-export const H_GAP = 24;
+export const H_GAP = 12;
 export const V_GAP = 12;
 export const CARD_WIDTH = (width - H_GAP * 3) / 2;
 
